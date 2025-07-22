@@ -1,0 +1,16 @@
+###BASE IMAGE
+FROM python:3.10 
+
+###SETTING WORKDIR
+WORKDIR /app
+
+####COPYING CODE FROM LOCAL TO CONTAINER
+COPY . .
+
+###INSTALLING DEPENDENCIES OF CODE
+RUN pip install -r requirements.txt
+
+###RUN THE CODE
+CMD ["python3", "run.py"]
+
+
