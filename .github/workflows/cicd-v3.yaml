@@ -1,0 +1,102 @@
+---
+name: CICD
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Check Python
+        run: |
+          python3.12 --version
+          python3.12 -m pip --version
+
+      - name: Create virtual environment
+        run: |
+          python3.12 -m venv .venv
+
+      - name: Install dependencies
+        run: |
+          .venv/bin/python -m pip install --upgrade pip
+          .venv/bin/python -m pip install -r requirements.txt
+
+      - name: Run tests
+        run: |
+          .venv/bin/python -m unittest discover tests
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Build image
+        run: |
+          docker build -t flask-sample-app:${{ github.sha }} .
+
+      - name: Run Container
+        run: |
+          docker run -d \
+            --name flask-app \
+            -p 5000:5000 \
+            flask-sample-app:${{ github.sha }}
+
+            sleep 3
+
+          curl http://localhost:5000/health
+          docker stop flask-app
+          docker rm flask-app
+
+      - name: Save Docker image
+        run: |
+          docker save flask-sample-app:${{ github.sha }} \
+            -o flask-sample-app-${{ github.sha }}.tar
+
+      - name: Upload Docker image
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: flask-sample-app-${{ github.sha }}
+          path: flask-sample-app-${{ github.sha }}.tar
+
+  deploy-dev:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: flask-dev
+
+    steps:
+      - name: deployment to development
+        run: |
+          echo "deploying flask application"
+
+      - name: Show environment
+        run: |
+          echo "Environment: ${{ secrets.APP_ENV }}"
+
+      - name: download artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: flask-sample-app-${{ github.sha }}
+          path: ./image
+
+      - name: load image
+        run: |
+          docker load -i ./image/flask-sample-app-${{ github.sha }}.tar
+
+      - name: run the container
+        run: |
+          docker run -d \
+            --name flask-app \
+            -p 5000:5000 \
+            -e APP_NAME="${{ vars.APP_NAME }}" \
+            flask-sample-app:${{ github.sha }}

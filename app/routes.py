@@ -1,5 +1,5 @@
 # app/routes.py
-
+import os
 from app import app
 from flask import request
 
@@ -7,7 +7,9 @@ items = []
 
 @app.route('/')
 def hello():
-    return "Hello, Flask!"
+    app_name = os.getenv("APP_NAME", "Test")
+    return f"Hello, {app_name}!"
+   # return "Hello, Flask!"
 
 @app.route('/items', methods=['GET'])
 def get_items():

@@ -1,0 +1,26 @@
+
+# Virtual environment
+venv/
+py3/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Environment/secrets
+.env
+*.pem
+*.key
+
+# Test/cache
+.pytest_cache/
+.coverage
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+.github/workflows/cicd.yaml
+.github/workflows/cicd-v2.yaml

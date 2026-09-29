@@ -1,5 +1,5 @@
 # tests/test_app.py
-
+import os
 import unittest
 from app import app
 
@@ -7,11 +7,15 @@ class TestAppRoutes(unittest.TestCase):
     def setUp(self):
         self.app = app.test_client()
         self.app.testing = True
+        os.environ["APP_NAME"] = "Test"
+
+    def tearDown(self):
+        os.environ.pop("APP_NAME", None)
 
     def test_hello_route(self):
         response = self.app.get('/')
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data.decode('utf-8'), "Hello, Flask!")
+        self.assertEqual(response.data.decode('utf-8'), "Hello, Test!")
 
     def test_add_item_route(self):
         response = self.app.post('/items', json={"name": "item1"})

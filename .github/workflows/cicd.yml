@@ -1,0 +1,75 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  EVENT_BUS: devops-agent-demo-cicd
+
+jobs:
+  ci:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install AWS CLI (reuse on the runner host)
+        run: |
+          if ! command -v aws >/dev/null 2>&1; then
+            curl -s https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o /tmp/awscliv2.zip
+            unzip -q -o /tmp/awscliv2.zip -d /tmp
+            sudo /tmp/aws/install --update
+          fi
+          aws --version
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        id: tests
+        run: |
+          set +e
+          python3 -m pytest -v
+          CODE=$?
+          echo "TESTS_EXIT_CODE=$CODE" >> "$GITHUB_ENV"
+          exit 0
+
+      - name: Publish CI/CD result to AWS EventBridge
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import datetime, json, os
+          status = "success"
+          if os.environ.get("TESTS_EXIT_CODE", "0") != "0":
+              status = "failure"
+          detail = {
+              "status": status,
+              "pipeline": "flask-sample-app",
+              "commit": os.environ.get("GITHUB_SHA", ""),
+              "title": f"flask-sample-app CI {status}",
+              "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+          }
+          entries = [{
+              "Source": "demo.github.actions",
+              "DetailType": "CI/CD Pipeline",
+              "Detail": json.dumps(detail),
+              "EventBusName": os.environ["EVENT_BUS"],
+          }]
+          with open("/tmp/event.json", "w") as f:
+              json.dump(entries, f)
+          PY
+          aws events put-events --region "$AWS_REGION" --cli-binary-format raw-in-base64-out \
+            --entries file:///tmp/event.json
+
+      - name: Fail the job if tests failed
+        if: env.TESTS_EXIT_CODE != '0'
+        run: |
+          echo "Tests failed (exit $TESTS_EXIT_CODE) - investigation triggered via EventBridge"
+          exit 1
