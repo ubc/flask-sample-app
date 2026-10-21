@@ -63,7 +63,7 @@ To get the Flask app up and running on your local machine, follow these steps:
 The application provides the following routes:
 
 - `GET /`: Returns a simple greeting message.
-- `GET /items`: Returns a list of items.
+- `GET /items`: Returns a list of items. Pass the optional `search` query parameter to filter by a partial, case-insensitive name.
 - `GET /items/{item_id}`: Returns the details of a specific item.
 - `POST /items`: Adds a new item to the list.
 
