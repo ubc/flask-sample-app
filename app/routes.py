@@ -11,6 +11,15 @@ def hello():
 
 @app.route('/items', methods=['GET'])
 def get_items():
+    search = request.args.get('search')
+    if search is not None:
+        matching_items = [
+            item for item in items
+            if isinstance(item, dict)
+            and isinstance(item.get('name'), str)
+            and search.lower() in item['name']
+        ]
+        return {'items': matching_items}
     return {'items': items}
 
 @app.route('/items/<int:item_id>', methods=['GET'])

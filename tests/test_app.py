@@ -2,11 +2,13 @@
 
 import unittest
 from app import app
+from app.routes import items
 
 class TestAppRoutes(unittest.TestCase):
     def setUp(self):
         self.app = app.test_client()
         self.app.testing = True
+        items.clear()
 
     def test_hello_route(self):
         response = self.app.get('/')
@@ -19,9 +21,25 @@ class TestAppRoutes(unittest.TestCase):
         self.assertEqual(response.get_json(), {'message': 'Item added successfully'})
 
     def test_get_item_route(self):
+        self.app.post('/items', json={"name": "item1"})
+
         response = self.app.get('/items/0')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_json(), {'item': {'name': 'item1'}})
+
+    def test_filter_items_by_name(self):
+        self.app.post('/items', json={"name": "filterable item"})
+
+        response = self.app.get('/items?search=filterable')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json(), {'items': [{'name': 'filterable item'}]})
+
+    def test_filter_items_with_no_matches(self):
+        response = self.app.get('/items?search=not-present')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json(), {'items': []})
 
     def test_get_nonexistent_item_route(self):
         response = self.app.get('/items/1')
@@ -30,4 +48,3 @@ class TestAppRoutes(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-
